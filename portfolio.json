@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "name": "tensor-lab-alan-vo",
+  "owner": "ALANDVO",
+  "email": "alanvo@gmail.com",
+  "domain": "AI/ML developer tools",
+  "summary": "Work in progress: tensor-lab-alan-vo",
+  "workflows": [
+    "Encode/decode OHLCV windows using Kronos tokenizer",
+    "Generate sampled predictions with configurable temperature and top-p",
+    "Fine-tune LoRA adapters on custom market data",
+    "Validate model performance with backtest metrics and visualization"
+  ],
+  "auth": "oidc-keycloak-saml-broker",
+  "llm_providers": [
+    "openai-compatible",
+    "anthropic",
+    "gemini",
+    "ollama"
+  ],
+  "status": "work-in-progress"
+}

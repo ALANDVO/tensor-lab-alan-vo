@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "current_feature": "project-skeleton",
+  "features": [
+    {
+      "id": "project-skeleton",
+      "title": "Project Skeleton: FastAPI backend + React frontend with Docker",
+      "status": "done",
+      "acceptance": [
+        "FastAPI app runs on port 8000 with /health endpoint",
+        "React + Vite + TypeScript app runs on port 5173",
+        "Docker compose starts both services + Keycloak",
+        "Backend tests pass (pytest)",
+        "Frontend builds and tests pass (npm run build, npm test)"
+      ],
+      "implementation": [
+        "backend/app/main.py",
+        "backend/app/api/routes.py",
+        "backend/requirements.txt",
+        "backend/tests/test_health.py",
+        "frontend/package.json",
+        "frontend/src/main.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/api/client.ts",
+        "docker-compose.yaml",
+        "Dockerfile.backend",
+        "Dockerfile.frontend"
+      ],
+      "tests": [
+        "backend/tests/test_health.py",
+        "frontend/src/App.test.tsx"
+      ]
+    },
+    {
+      "id": "tokenizer-service",
+      "title": "Kronos Tokenizer Service: load tokenizer, encode/decode OHLCV",
+      "status": "planned",
+      "acceptance": [
+        "POST /api/v1/tokenize accepts OHLCV windows, returns token IDs",
+        "POST /api/v1/detokenize accepts token IDs, returns OHLCV predictions",
+        "Tokenizer loads from local HuggingFace cache or downloads on first use",
+        "Input validation: window size, feature count, data types"
+      ],
+      "implementation": [
+        "backend/app/services/tokenizer.py",
+        "backend/app/api/tokenizer_routes.py",
+        "backend/tests/test_tokenizer.py"
+      ],
+      "tests": [
+        "backend/tests/test_tokenizer.py"
+      ]
+    },
+    {
+      "id": "prediction-engine",
+      "title": "Prediction Engine: Kronos model inference with sampling",
+      "status": "planned",
+      "acceptance": [
+        "POST /api/v1/predict accepts context window + horizon, returns sampled predictions",
+        "Configurable temperature, top_p, sample_count",
+        "Returns mean/std/quantiles across samples",
+        "Handles variable context lengths (issue #92)"
+      ],
+      "implementation": [
+        "backend/app/services/predictor.py",
+        "backend/app/api/prediction_routes.py",
+        "backend/tests/test_predictor.py"
+      ],
+      "tests": [
+        "backend/tests/test_predictor.py"
+      ]
+    },
+    {
+      "id": "finetuning-workflow",
+      "title": "Fine-tuning Workflow: LoRA adapter training on custom data",
+      "status": "planned",
+      "acceptance": [
+        "POST /api/v1/finetune starts LoRA fine-tuning job",
+        "GET /api/v1/finetune/{job_id} returns status/progress",
+        "Accepts custom OHLCV dataset (CSV/Parquet)",
+        "Saves adapter weights for later inference",
+        "Supports market-specific fine-tuning (issue #68)"
+      ],
+      "implementation": [
+        "backend/app/services/finetuner.py",
+        "backend/app/api/finetune_routes.py",
+        "backend/tests/test_finetuner.py"
+      ],
+      "tests": [
+        "backend/tests/test_finetuner.py"
+      ]
+    },
+    {
+      "id": "validation-dashboard",
+      "title": "Validation Dashboard: backtest results + metrics visualization",
+      "status": "planned",
+      "acceptance": [
+        "Frontend page showing MAE, RMSE, MAPE, Correlation metrics",
+        "Predicted vs actual price charts",
+        "Load validation dataset (issue #114)",
+        "Compare multiple model checkpoints"
+      ],
+      "implementation": [
+        "frontend/src/pages/ValidationDashboard.tsx",
+        "frontend/src/components/MetricsChart.tsx",
+        "frontend/src/components/PredictionChart.tsx",
+        "backend/app/api/validation_routes.py"
+      ],
+      "tests": [
+        "frontend/src/pages/ValidationDashboard.test.tsx"
+      ]
+    },
+    {
+      "id": "auth-oidc",
+      "title": "OIDC Authentication with Keycloak",
+      "status": "planned",
+      "acceptance": [
+        "Login redirects to Keycloak",
+        "Callback exchanges code for tokens",
+        "Protected API endpoints require valid access token",
+        "Logout clears session"
+      ],
+      "implementation": [
+        "backend/app/core/auth.py",
+        "backend/app/api/auth_routes.py",
+        "frontend/src/auth/AuthProvider.tsx",
+        "frontend/src/components/LoginButton.tsx"
+      ],
+      "tests": [
+        "backend/tests/test_auth.py"
+      ]
+    }
+  ]
+}

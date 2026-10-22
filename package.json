@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "name": "tensor-lab-alan-vo",
+  "version": "1.0.0",
+  "description": "Kronos Tensor Lab - A Foundation Model for the Language of Financial Markets",
+  "author": "Alan Vo <alanvo@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ALANDVO/tensor-lab-alan-vo.git"
+  },
+  "scripts": {
+    "backend:dev": "cd backend && PYTHONPATH=. uvicorn app.main:app --reload --port 8000",
+    "frontend:dev": "cd frontend && npm run dev",
+    "backend:test": "cd backend && .venv/bin/python -m pytest tests/ -v",
+    "frontend:test": "cd frontend && npm test",
+    "frontend:build": "cd frontend && npm run build"
+  },
+  "engines": {
+    "python": ">=3.12",
+    "node": ">=24"
+  }
+}

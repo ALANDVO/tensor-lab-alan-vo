@@ -1,0 +1,44 @@
+# Backend
+.venv/
+__pycache__/
+*.py[cod]
+*.sqlite
+*.db
+.env
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Frontend
+node_modules/
+dist/
+build/
+.env
+*.log
+npm-debug.log*
+.vite/
+
+# Docker
+.docker/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local agent metadata
+.antigravitycli/
+.omp/
+
+# Test artifacts
+coverage/
+.nyc_output/
