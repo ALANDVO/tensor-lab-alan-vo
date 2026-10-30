@@ -4,7 +4,7 @@ Each round completes one feature or repair. Future items are planned, not implem
 
 ## Current round
 
-project-skeleton
+tokenizer-service
 
 ## Roadmap
 
@@ -25,7 +25,7 @@ Tests: `backend/tests/test_health.py`, `frontend/src/App.test.tsx`
 
 ### tokenizer-service — Kronos Tokenizer Service: load tokenizer, encode/decode OHLCV
 
-Status: planned
+Status: done
 
 Acceptance:
 - POST /api/v1/tokenize accepts OHLCV windows, returns token IDs
