@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.0 — work-in-progress checkpoint
+
+Partial code published for continued development. Known issues: STATUS.md.
+
+# Changelog
+
+## 1.1.0 — work-in-progress checkpoint
+
+Tokenizer service implementation.
+
+### Added
+- Kronos Tokenizer Service (`backend/app/services/tokenizer.py`)
+- Tokenizer API endpoints: `POST /api/v1/tokenizer/tokenize`, `POST /api/v1/tokenizer/detokenize`
+- Tokenizer service tests (`backend/tests/test_tokenizer.py`)
+- Input validation for window size, feature count, data types
+
 ## 1.0.0 — work-in-progress checkpoint
 
 Partial code published for continued development. Known issues: STATUS.md.
@@ -20,7 +36,6 @@ All notable changes to this project will be documented in this file.
 - Backend unit tests with pytest + httpx
 
 ### Planned
-- Kronos tokenizer service (encode/decode OHLCV)
 - Prediction engine with configurable sampling
 - LoRA fine-tuning workflow
 - Validation dashboard with metrics visualization

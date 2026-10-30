@@ -1,4 +1,4 @@
-# Kronos Tensor Lab
+# Kronos Tensor Lab — Alan Vo
 
 > Work in progress. This checkpoint may be incomplete or fail tests. See PLAN.md and STATUS.md before use.
 
@@ -123,9 +123,9 @@ graph TB
 - `GET /health` - Service health check
 - `GET /api/v1/health` - API health check
 
-### Tokenizer (Planned)
-- `POST /api/v1/tokenize` - Encode OHLCV to tokens
-- `POST /api/v1/detokenize` - Decode tokens to OHLCV
+### Tokenizer
+- `POST /api/v1/tokenizer/tokenize` - Encode OHLCV to tokens
+- `POST /api/v1/tokenizer/detokenize` - Decode tokens to OHLCV
 
 ### Prediction (Planned)
 - `POST /api/v1/predict` - Generate predictions with sampling

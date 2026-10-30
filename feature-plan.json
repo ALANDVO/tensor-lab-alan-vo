@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "current_feature": "project-skeleton",
+  "current_feature": "tokenizer-service",
   "features": [
     {
       "id": "project-skeleton",
@@ -34,7 +34,7 @@
     {
       "id": "tokenizer-service",
       "title": "Kronos Tokenizer Service: load tokenizer, encode/decode OHLCV",
-      "status": "planned",
+      "status": "done",
       "acceptance": [
         "POST /api/v1/tokenize accepts OHLCV windows, returns token IDs",
         "POST /api/v1/detokenize accepts token IDs, returns OHLCV predictions",
