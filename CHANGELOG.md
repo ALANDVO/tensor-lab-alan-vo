@@ -1,9 +1,23 @@
 # Changelog
 
+## 1.2.0 — work-in-progress checkpoint
+
+Partial code published for continued development. Known issues: STATUS.md.
+
 ## 1.1.0 — work-in-progress checkpoint
 
 Partial code published for continued development. Known issues: STATUS.md.
 
+### Fixed
+- Tokenizer API test expectations for FastAPI validation error codes
+  - `test_tokenize_endpoint_invalid_input`: expects 400 (handler ValueError for wrong feature count)
+  - `test_detokenize_endpoint_invalid_input`: expects 422 (Pydantic schema validation for wrong dimensions)
+
+### Added
+- Kronos Tokenizer Service (`backend/app/services/tokenizer.py`)
+- Tokenizer API endpoints: `POST /api/v1/tokenizer/tokenize`, `POST /api/v1/tokenizer/detokenize`
+- Tokenizer service tests (`backend/tests/test_tokenizer.py`)
+- Input validation for window size, feature count, data types
 # Changelog
 
 ## 1.1.0 — work-in-progress checkpoint
