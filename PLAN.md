@@ -94,3 +94,6 @@ Implementation: `backend/app/core/auth.py`, `backend/app/api/auth_routes.py`, `f
 
 Tests: `backend/tests/test_auth.py`
 
+---
+
+Alan Vo · [alanvo.net](https://alanvo.net)

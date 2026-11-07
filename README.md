@@ -172,3 +172,7 @@ python -m backend.app.scripts.run_validation --dataset kronos-eth-validation --c
 
 ## License
 MIT License - Copyright (c) 2026 Alan Vo <alanvo@gmail.com>
+
+---
+
+Alan Vo · [alanvo.net](https://alanvo.net)

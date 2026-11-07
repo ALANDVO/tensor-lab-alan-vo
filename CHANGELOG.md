@@ -54,3 +54,7 @@ All notable changes to this project will be documented in this file.
 - LoRA fine-tuning workflow
 - Validation dashboard with metrics visualization
 - OIDC authentication integration
+
+---
+
+Alan Vo · [alanvo.net](https://alanvo.net)
