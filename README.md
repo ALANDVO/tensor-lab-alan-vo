@@ -120,8 +120,7 @@ graph TB
 ## API Endpoints
 
 ### Health
-- `GET /health` - Service health check
-- `GET /api/v1/health` - API health check
+- `GET /health` - Service health check (returns detailed status)
 
 ### Tokenizer
 - `POST /api/v1/tokenizer/tokenize` - Encode OHLCV to tokens
