@@ -1,0 +1,303 @@
+"""Kronos Prediction Engine: model inference with sampling."""
+
+import os
+from typing import Optional, List, Dict, Any
+import numpy as np
+from transformers import AutoModelForTokenClassification, AutoTokenizer
+import torch
+
+
+class KronosPredictor:
+    """Predictor for Kronos financial time series model with sampling."""
+
+    def __init__(
+        self,
+        model_name: str = "NeoQuasar/Kronos-Tiny",
+        cache_dir: Optional[str] = None,
+        max_length: int = 512,
+        n_features: int = 5,  # OHLCV
+    ):
+        self.model_name = model_name
+        self.cache_dir = cache_dir or os.environ.get("HF_HOME", os.path.expanduser("~/.cache/huggingface"))
+        self.max_length = max_length
+        self.n_features = n_features
+        self._model = None
+        self._tokenizer = None
+
+    @property
+    def model(self):
+        """Lazy-load the model."""
+        if self._model is None:
+            self._model = AutoModelForTokenClassification.from_pretrained(
+                self.model_name,
+                cache_dir=self.cache_dir,
+                trust_remote_code=True,
+            )
+        return self._model
+
+    @property
+    def tokenizer(self):
+        """Lazy-load the tokenizer."""
+        if self._tokenizer is None:
+            self._tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name,
+                cache_dir=self.cache_dir,
+                trust_remote_code=True,
+            )
+        return self._tokenizer
+
+    def _prepare_context(self, context_ohlcv: List[List[float]]) -> np.ndarray:
+        """Prepare context window as normalized numpy array."""
+        if not context_ohlcv:
+            raise ValueError("Context window cannot be empty")
+
+        context = np.array(context_ohlcv, dtype=np.float32)
+
+        if context.ndim == 1:
+            context = context.reshape(1, -1, self.n_features)
+
+        batch_size, window_size, n_features = context.shape
+
+        if n_features != self.n_features:
+            raise ValueError(f"Expected {self.n_features} features (OHLCV), got {n_features}")
+
+        if window_size > self.max_length:
+            raise ValueError(f"Context window size {window_size} exceeds max_length {self.max_length}")
+
+        if window_size < 1:
+            raise ValueError(f"Context window size must be at least 1, got {window_size}")
+
+        # Normalize: simple min-max per feature
+        # In practice, use the same normalization as training
+        min_vals = context.min(axis=1, keepdims=True)
+        max_vals = context.max(axis=1, keepdims=True)
+        range_vals = max_vals - min_vals
+        range_vals = np.where(range_vals == 0, 1.0, range_vals)
+
+        context_norm = (context - min_vals) / range_vals
+
+        return context_norm
+
+    def predict(
+        self,
+        context_ohlcv: List[List[float]],
+        horizon: int = 1,
+        temperature: float = 1.0,
+        top_p: float = 1.0,
+        sample_count: int = 100,
+    ) -> Dict[str, Any]:
+        """
+        Generate sampled predictions for the given context.
+
+        Args:
+            context_ohlcv: List of [O, H, L, C, V] windows forming the context
+            horizon: Number of future time steps to predict
+            temperature: Sampling temperature (higher = more random)
+            top_p: Top-p nucleus sampling parameter
+            sample_count: Number of samples to draw
+
+        Returns:
+            Dict with:
+                - "mean": mean predictions (window_size, n_features)
+                - "std": standard deviation across samples
+                - "quantiles": dict with qkey -> quantile values
+                - "samples": sampled predictions (sample_count, window_size, n_features)
+                - "context_length": original context length
+        """
+        # Prepare context
+        context_norm = self._prepare_context(context_ohlcv)
+        batch_size, window_size, n_features = context_norm.shape
+
+        # Encode context to token IDs using the tokenizer
+        # Flatten each timestep feature vector for tokenization
+        flat_data = context_norm.reshape(-1, n_features)
+
+        context_token_ids = []
+        for i in range(batch_size):
+            for t in range(window_size):
+                # Convert feature vector to string for tokenizer
+                row = flat_data[i, t]
+                row_str = f"O:{row[0]:.4f},H:{row[1]:.4f},L:{row[2]:.4f},C:{row[3]:.4f},V:{row[4]:.1f}"
+                encoded = self.tokenizer.encode(row_str, add_special_tokens=False, max_length=self.max_length, truncation=True)
+                context_token_ids.append(encoded)
+
+        # For model inference, we need to prepare input_ids
+        # Kronos processes sequences of tokenized feature vectors
+        all_token_ids = []
+        for enc in context_token_ids:
+            # Pad to max_length
+            if len(enc) < self.max_length:
+                pad_len = self.max_length - len(enc)
+                enc = enc + [self.tokenizer.pad_token_id or 0] * pad_len
+            else:
+                enc = enc[:self.max_length]
+            all_token_ids.append(enc)
+
+        # Use the last token position as the starting point for autoregressive generation
+        # We'll generate 'horizon' new tokens from the encoded context
+        # Shape: (batch=1, seq_len) - take first batch item
+        input_ids = torch.tensor([all_token_ids[0]], dtype=torch.long).to(self.model.device)
+
+        # Autoregressive sampling
+        self.model.eval()
+        with torch.no_grad():
+            # Initial forward to get hidden state
+            outputs = self.model(input_ids=input_ids)
+            # Get last hidden state
+            last_hidden = outputs.last_hidden_state  # (1, seq_len, hidden_dim)
+
+            # Generate horizon steps
+            samples = []
+            for _ in range(sample_count):
+                sample = self._sample_autoregressive(
+                    last_hidden, horizon, temperature, top_p
+                )
+                samples.append(sample.cpu().numpy())
+
+            samples_arr = np.stack(samples)  # (sample_count, horizon, hidden_dim or token_space)
+
+        # Decode samples back to OHLCV space
+        # Map model outputs to prediction space
+        # For Kronos, the model output hidden states are projected to vocabulary logits
+        # We'll apply a simple projection and denormalize
+
+        # Denormalize samples using context stats
+        # The model predicts in normalized space; we need to map back
+        min_vals = np.min(context_norm, axis=(1, 2), keepdims=True)
+        max_vals = np.max(context_norm, axis=(1, 2), keepdims=True)
+        range_vals = max_vals - min_vals
+        range_vals = np.where(range_vals == 0, 1.0, range_vals)
+
+        # Average across samples for mean
+        mean_denorm = np.mean(samples_arr, axis=0)  # (horizon, hidden_dim)
+        # Map hidden to feature space (simplified: use last hidden -> linear projection)
+        # In practice, Kronos has a specific head for price prediction
+
+        # For this implementation, we'll use the raw model outputs projected back
+        # This is a placeholder for the actual Kronos decoding
+        mean_ohlcv = self._denormalize_and_project(mean_denorm, min_vals, max_vals, range_vals)
+        std_ohlcv = self._denormalize_and_project(
+            np.std(samples_arr, axis=0, ddof=1), min_vals, max_vals, range_vals
+        )
+
+        # Compute quantiles
+        quantiles = {}
+        for q in [0.1, 0.25, 0.5, 0.75, 0.9]:
+            q_val = np.percentile(samples_arr, q * 100, axis=0)
+            q_ohlcv = self._denormalize_and_project(q_val, min_vals, max_vals, range_vals)
+            quantiles[f"p{q:.1f}"] = q_ohlcv.tolist()
+
+        # Return structure
+        result = {
+            "mean": mean_ohlcv.tolist(),
+            "std": std_ohlcv.tolist(),
+            "quantiles": quantiles,
+            "samples": samples_arr.tolist(),
+            "context_length": window_size,
+            "horizon": horizon,
+            "temperature": temperature,
+            "top_p": top_p,
+            "sample_count": sample_count,
+        }
+
+        return result
+
+    def _sample_autoregressive(
+        self, last_hidden: torch.Tensor, horizon: int, temperature: float, top_p: float
+    ) -> torch.Tensor:
+        """
+        Generate horizon steps autoregressively using sampling.
+
+        Args:
+            last_hidden: Last hidden state from context encoding (1, seq_len, hidden_dim)
+            horizon: Number of steps to generate
+            temperature: Sampling temperature
+            top_p: Top-p nucleus sampling
+
+        Returns:
+            Generated token IDs (1, horizon)
+        """
+        generated = last_hidden  # Start with context hidden state
+        steps = []
+
+        for _ in range(horizon):
+            # Get logits from the last position
+            # Use a projection head to map hidden -> vocabulary logits
+            # Kronos model has a classifier head; we use its output
+            logits = self.model.classifier(generated[:, -1:, :])  # (1, 1, vocab_size)
+
+            # Apply temperature
+            logits_scaled = logits / max(temperature, 1e-4)
+
+            # Apply top-p nucleus sampling
+            logits_topp = self._top_p_filtering(logits_scaled, top_p)
+
+            # Sample from the filtered distribution
+            probs = torch.softmax(logits_topp, dim=-1)
+            probs = probs / probs.sum(dim=-1, keepdim=True)  # renormalize
+            sampled_idx = torch.multinomial(probs, num_samples=1)  # (1, 1)
+
+            steps.append(sampled_idx.squeeze(-1))
+
+            # Append sampled token to continue generation (simplified)
+            # In practice, we'd embed the sampled token and continue
+            # Here we just repeat the process with the same context hidden state
+            # For simplicity, we append a zero-embedding placeholder
+            generated = torch.cat([generated, torch.zeros(1, 1, generated.shape[-1], device=generated.device)], dim=1)
+
+        # Return sampled indices (flattened)
+        return torch.stack(steps).squeeze(0)  # (horizon,)
+
+    @staticmethod
+    def _top_p_filtering(logits: torch.Tensor, top_p: float) -> torch.Tensor:
+        """Apply top-p (nucleus) filtering to logits."""
+        # Sort logits in descending order
+        sorted_logits, sorted_indices = torch.sort(logits, descending=True, dim=-1)
+        cumulative_probs = torch.cumsum(torch.softmax(sorted_logits, dim=-1), dim=-1)
+
+        # Remove tokens with cumulative probability > top_p
+        # Keep the first token even if it exceeds top_p
+        sorted_logits[cumulative_probs > top_p] = -float("inf")
+
+        # Restore original order
+        _, unsort_indices = torch.sort(sorted_indices, dim=-1)
+        logits_filtered = torch.zeros_like(logits).scatter_(dim=-1, index=sorted_indices, src=sorted_logits)
+        logits_filtered = logits_filtered.gather(dim=-1, index=unsort_indices)
+
+        return logits_filtered
+
+    def _denormalize_and_project(
+        self, normalized_vals: np.ndarray, min_vals: np.ndarray, max_vals: np.ndarray, range_vals: np.ndarray
+    ) -> np.ndarray:
+        """Denormalize values and project to OHLCV space."""
+        # Denormalize
+        denorm = normalized_vals * range_vals + min_vals
+
+        # Ensure valid OHLCV ranges: H >= max(O,C), L <= min(O,C)
+        # For simplicity, clip and adjust
+        ohlcv = denorm.copy()
+
+        # Clip volumes to reasonable range (prevent wild values)
+        ohlcv[..., 4] = np.clip(ohlcv[..., 4], 0, 1e6)
+
+        # Adjust H to be at least the max of O and C
+        ohc = ohlcv[..., :3]
+        max_ohc = np.max(ohc, axis=-1, keepdims=True)
+        ohlcv[..., 1] = np.max(ohlcv[..., :2], axis=-1, keepdims=True)  # H = max(O, H) -- simplified
+
+        # Adjust L to be at most the min of O and C
+        ohlcv[..., 2] = np.min(ohlcv[..., :2], axis=-1, keepdims=True)  # L = min(O, L) -- simplified
+
+        return ohlcv
+
+
+# Global instance
+_predictor_instance: Optional[KronosPredictor] = None
+
+
+def get_predictor() -> KronosPredictor:
+    """Get or create the global predictor instance."""
+    global _predictor_instance
+    if _predictor_instance is None:
+        _predictor_instance = KronosPredictor()
+    return _predictor_instance

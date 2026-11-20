@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "current_feature": "tokenizer-service",
+  "current_feature": "prediction-engine",
   "features": [
     {
       "id": "project-skeleton",
@@ -53,7 +53,7 @@
     {
       "id": "prediction-engine",
       "title": "Prediction Engine: Kronos model inference with sampling",
-      "status": "planned",
+      "status": "in_progress",
       "acceptance": [
         "POST /api/v1/predict accepts context window + horizon, returns sampled predictions",
         "Configurable temperature, top_p, sample_count",

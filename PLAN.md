@@ -4,7 +4,7 @@ Each round completes one feature or repair. Future items are planned, not implem
 
 ## Current round
 
-tokenizer-service
+prediction-engine
 
 ## Roadmap
 
@@ -39,7 +39,7 @@ Tests: `backend/tests/test_tokenizer.py`
 
 ### prediction-engine — Prediction Engine: Kronos model inference with sampling
 
-Status: planned
+Status: in_progress
 
 Acceptance:
 - POST /api/v1/predict accepts context window + horizon, returns sampled predictions
