@@ -5,6 +5,8 @@ import torch
 import numpy as np
 from typing import Optional, List, Dict, Any
 
+from transformers import AutoModelForTokenClassification, AutoTokenizer
+
 
 class KronosPredictor:
     """Predictor for Kronos financial time series model with sampling."""
